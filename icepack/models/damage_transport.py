@@ -60,12 +60,12 @@ def M_e(eps_e, A):
     return sqrt(3.0) * A ** (-1 / n) * eps_e ** (1 / n)
 
 
-def heal(e1, eps_h, lh=.1):
-    return lh * (e1 - eps_h)
+def heal(e1, eps_h, dt, lh=.1):
+    return dt * lh * (e1 - eps_h)
 
 
-def fracture(D, eps_e, ld=0.3):
-    return ld * eps_e * (1 - D)
+def fracture(D, eps_e, dt, ld=0.3):
+    return dt * ld * eps_e * (1 - D)
 
 
 class DamageTransport(object):
@@ -168,8 +168,8 @@ class DamageTransport(object):
 
         """ add damage associated with longitudinal spreading after 
         advecting damage feild.  """
-        h_term.project(firedrake.conditional(e1 - eps_h < 0, heal(e1, eps_h, lh), 0.0))
-        f_term.project(firedrake.conditional(σ_e - σc > 0, fracture(D, eps_e, ld), 0.0))
+        h_term.project(firedrake.conditional(e1 - eps_h < 0, heal(e1, eps_h, dt, lh), 0.0))
+        f_term.project(firedrake.conditional(σ_e - σc > 0, fracture(D, eps_e, dt, ld), 0.0))
 
         """ we require that damage be in the set [0,D_max) """
         Dnew.project(

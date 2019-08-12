@@ -17,7 +17,6 @@ from icepack.constants import (ice_density as ρ_I, water_density as ρ_W,
 from icepack.models.viscosity import viscosity_depth_averaged as viscosity
 from icepack.models.friction import side_friction, normal_flow_penalty
 from icepack.models.mass_transport import MassTransport
-from icepack.models.damage_transport import DamageTransport
 from icepack.optimization import newton_search
 from icepack.utilities import add_kwarg_wrapper
 
@@ -77,7 +76,6 @@ class IceShelf(object):
     def __init__(self, viscosity=viscosity, gravity=gravity, terminus=terminus,
                  side_friction=side_friction, penalty=normal_flow_penalty):
         self.mass_transport = MassTransport()
-        self.damage_transport = DamageTransport()
         self.viscosity = add_kwarg_wrapper(viscosity)
         self.side_friction = add_kwarg_wrapper(side_friction)
         self.penalty = add_kwarg_wrapper(penalty)
