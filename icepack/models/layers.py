@@ -30,7 +30,7 @@ def orthogonal_velocity(u, h):
         Ice thickness """
 
     Q = h.function_space()
-    w = project((u[0].dx(0) + u[1].dx(1)), Q)
+    w = project(-(u[0].dx(0) + u[1].dx(1)), Q)
     return w
 
 
