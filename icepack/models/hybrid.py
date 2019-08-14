@@ -13,14 +13,29 @@
 import functools
 import sympy
 import firedrake
-from firedrake import (inner, outer, sym, Identity, tr as trace, sqrt,
-                       grad, dx, ds, ds_b, ds_v)
+from firedrake import (
+    inner,
+    outer,
+    sym,
+    Identity,
+    tr as trace,
+    sqrt,
+    grad,
+    dx,
+    ds,
+    ds_b,
+    ds_v,
+)
 from icepack.optimization import newton_search
-from icepack.constants import (ice_density as ρ_I, water_density as ρ_W,
-                               glen_flow_law as n, weertman_sliding_law as m,
-                               gravity as g)
-from icepack.utilities import (facet_normal_2, grad_2, diameter,
-                               add_kwarg_wrapper)
+from icepack.constants import (
+    ice_density as ρ_I,
+    water_density as ρ_W,
+    glen_flow_law as n,
+    weertman_sliding_law as m,
+    gravity as g,
+)
+from icepack.utilities import facet_normal_2, grad_2, diameter, add_kwarg_wrapper
+
 
 class MassTransport(object):
     def solve(self, dt, h0, a, u, h_inflow=None):
@@ -42,7 +57,7 @@ class MassTransport(object):
         A = h0 * φ * dx + dt * (accumulation + flux_in)
 
         h = h0.copy(deepcopy=True)
-        solver_parameters = {'ksp_type': 'preonly', 'pc_type': 'lu'}
+        solver_parameters = {"ksp_type": "preonly", "pc_type": "lu"}
         firedrake.solve(F == A, h, solver_parameters=solver_parameters)
 
         return h
@@ -75,11 +90,11 @@ def _legendre(n, ζ):
 
 @functools.lru_cache(maxsize=None)
 def _pressure_approx(N):
-    ζ, ζ_sl = sympy.symbols('ζ ζ_sl', real=True, positive=True)
+    ζ, ζ_sl = sympy.symbols("ζ ζ_sl", real=True, positive=True)
 
     def coefficient(n):
         Sn = _legendre(n, ζ)
-        norm_square = sympy.integrate(Sn**2, (ζ, 0, 1))
+        norm_square = sympy.integrate(Sn ** 2, (ζ, 0, 1))
         return sympy.integrate((ζ_sl - ζ) * Sn, (ζ, 0, ζ_sl)) / norm_square
 
     polynomial = sum([coefficient(n) * _legendre(n, ζ) for n in range(N)])
@@ -113,7 +128,7 @@ def terminus(u, h, s, ice_front_ids=()):
     xdegree_u, zdegree_u = u.ufl_element().degree()
     degree_h = h.ufl_element().degree()[0]
     degree = (xdegree_u + degree_h, 2 * zdegree_u + 1)
-    metadata = {'quadrature_degree': degree}
+    metadata = {"quadrature_degree": degree}
 
     x, y, ζ = firedrake.SpatialCoordinate(u.ufl_domain())
     b = s - h
@@ -131,8 +146,8 @@ def stresses(ε_x, ε_z, A):
     horizontal and shear strain rates and fluidity"""
     I = Identity(2)
     tr = trace(ε_x)
-    ε_e = sqrt((inner(ε_x, ε_x) + inner(ε_z, ε_z) + tr**2) / 2)
-    μ = 0.5 * A**(-1/n) * ε_e**(1/n - 1)
+    ε_e = sqrt((inner(ε_x, ε_x) + inner(ε_z, ε_z) + tr ** 2) / 2)
+    μ = 0.5 * A ** (-1 / n) * ε_e ** (1 / n - 1)
     return 2 * μ * (ε_x + tr * I), 2 * μ * ε_z
 
 
@@ -194,7 +209,7 @@ def viscosity(u, s, h, A):
 
 def friction_stress(u, C):
     r"""Compute the shear stress for a given sliding velocity"""
-    return -C * sqrt(inner(u, u))**(1/m - 1) * u
+    return -C * sqrt(inner(u, u)) ** (1 / m - 1) * u
 
 
 def bed_friction(u, C):
@@ -212,7 +227,7 @@ def bed_friction(u, C):
        \tau(u, C) = -C|u|^{1/m - 1}u
     """
     τ_b = friction_stress(u, C)
-    return -m/(m + 1) * inner(τ_b, u) * ds_b
+    return -m / (m + 1) * inner(τ_b, u) * ds_b
 
 
 def side_friction(u, h, Cs=firedrake.Constant(0), side_wall_ids=()):
@@ -235,7 +250,7 @@ def side_friction(u, h, Cs=firedrake.Constant(0), side_wall_ids=()):
     u_t = u - inner(u, ν) * ν
     τ = friction_stress(u_t, Cs)
     ids = tuple(side_wall_ids)
-    return -m/(m + 1) * inner(τ, u_t) * h * ds_v(domain=mesh, subdomain_id=ids)
+    return -m / (m + 1) * inner(τ, u_t) * h * ds_v(domain=mesh, subdomain_id=ids)
 
 
 def normal_flow_penalty(u, h, scale=1.0, exponent=None, side_wall_ids=()):
@@ -257,8 +272,8 @@ def normal_flow_penalty(u, h, scale=1.0, exponent=None, side_wall_ids=()):
 
     d = u.ufl_function_space().ufl_element().degree()[0]
     exponent = d + 1 if (exponent is None) else exponent
-    penalty = scale * (L / δx)**exponent
-    return 0.5 * penalty * inner(u, ν)**2 * h * ds_v(tuple(side_wall_ids))
+    penalty = scale * (L / δx) ** exponent
+    return 0.5 * penalty * inner(u, ν) ** 2 * h * ds_v(tuple(side_wall_ids))
 
 
 class HybridModel(object):
@@ -271,9 +286,14 @@ class HybridModel(object):
     have a uniform thickness of 1, i.e. it has not been stretch to the bed
     and surface topography.
     """
-    def __init__(self, viscosity=viscosity,
-                 friction=bed_friction,
-                 gravity=gravity, terminus=terminus):
+
+    def __init__(
+        self,
+        viscosity=viscosity,
+        friction=bed_friction,
+        gravity=gravity,
+        terminus=terminus,
+    ):
         self.mass_transport = MassTransport()
         self.viscosity = add_kwarg_wrapper(viscosity)
         self.friction = add_kwarg_wrapper(friction)
@@ -292,8 +312,7 @@ class HybridModel(object):
         terminus = self.terminus(u=u, h=h, s=s, **kwargs)
         penalty = self.penalty(u=u, h=h, s=s, **kwargs)
 
-        return (viscosity + friction + side_friction
-                - gravity - terminus + penalty)
+        return viscosity + friction + side_friction - gravity - terminus + penalty
 
     def scale(self, u, h, s, **kwargs):
         r"""Return the positive, convex part of the action functional
@@ -301,8 +320,9 @@ class HybridModel(object):
         The positive part of the action functional is used as a dimensional
         scale to determine when to terminate an optimization algorithm.
         """
-        return (self.viscosity(u=u, h=h, s=s, **kwargs) +
-                self.friction(u=u, h=h, s=s, **kwargs))
+        return self.viscosity(u=u, h=h, s=s, **kwargs) + self.friction(
+            u=u, h=h, s=s, **kwargs
+        )
 
     def quadrature_degree(self, u, h, **kwargs):
         r"""Return the quadrature degree necessary to integrate the action
@@ -315,8 +335,10 @@ class HybridModel(object):
         """
         xdegree_u, zdegree_u = u.ufl_element().degree()
         degree_h = h.ufl_element().degree()[0]
-        return (3 * (xdegree_u - 1) + 2 * degree_h,
-                3 * max(zdegree_u - 1, 0) + zdegree_u + 1)
+        return (
+            3 * (xdegree_u - 1) + 2 * degree_h,
+            3 * max(zdegree_u - 1, 0) + zdegree_u + 1,
+        )
 
     def diagnostic_solve(self, u0, h, s, dirichlet_ids, tol=1e-6, **kwargs):
         r"""Solve for the ice velocity from the thickness and surface
@@ -352,18 +374,21 @@ class HybridModel(object):
         u = u0.copy(deepcopy=True)
 
         boundary_ids = u.ufl_domain().exterior_facets.unique_markers
-        side_wall_ids = kwargs.get('side_wall_ids', [])
-        kwargs['side_wall_ids'] = side_wall_ids
-        kwargs['ice_front_ids'] = list(
-            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids))
+        side_wall_ids = kwargs.get("side_wall_ids", [])
+        kwargs["side_wall_ids"] = side_wall_ids
+        kwargs["ice_front_ids"] = list(
+            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids)
+        )
         bcs = firedrake.DirichletBC(
-            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids)
-        params = {'quadrature_degree': self.quadrature_degree(u, h, **kwargs)}
+            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids
+        )
+        params = {"quadrature_degree": self.quadrature_degree(u, h, **kwargs)}
 
         action = self.action(u=u, h=h, s=s, **kwargs)
         scale = self.scale(u=u, h=h, s=s, **kwargs)
-        return newton_search(action, u, bcs, tol, scale,
-                             form_compiler_parameters=params)
+        return newton_search(
+            action, u, bcs, tol, scale, form_compiler_parameters=params
+        )
 
     def prognostic_solve(self, dt, h0, a, u, **kwargs):
         return self.mass_transport.solve(dt, h0=h0, a=a, u=u, **kwargs)

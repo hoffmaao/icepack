@@ -18,7 +18,7 @@ from icepack import utilities
 
 def tau(u, C):
     r"""Compute the shear stress for a given sliding velocity"""
-    return -C * sqrt(inner(u, u))**(1/m - 1) * u
+    return -C * sqrt(inner(u, u)) ** (1 / m - 1) * u
 
 
 def bed_friction(u, C):
@@ -34,7 +34,7 @@ def bed_friction(u, C):
     .. math::
        \tau(u, C) = -C|u|^{1/m - 1}u
     """
-    return -m/(m + 1) * inner(tau(u, C), u) * dx
+    return -m / (m + 1) * inner(tau(u, C), u) * dx
 
 
 def side_friction(u, h, Cs=firedrake.Constant(0), side_wall_ids=()):
@@ -55,7 +55,7 @@ def side_friction(u, h, Cs=firedrake.Constant(0), side_wall_ids=()):
     ν = firedrake.FacetNormal(mesh)
     u_t = u - inner(u, ν) * ν
     ds_side_walls = ds(domain=mesh, subdomain_id=tuple(side_wall_ids))
-    return -m/(m + 1) * h * inner(tau(u_t, Cs), u_t) * ds_side_walls
+    return -m / (m + 1) * h * inner(tau(u_t, Cs), u_t) * ds_side_walls
 
 
 def normal_flow_penalty(u, scale=1.0, exponent=None, side_wall_ids=()):
@@ -72,5 +72,5 @@ def normal_flow_penalty(u, scale=1.0, exponent=None, side_wall_ids=()):
     δx = firedrake.CellSize(mesh)
     d = u.ufl_function_space().ufl_element().degree()
     exponent = d + 1 if exponent is None else exponent
-    penalty = scale * (L / δx)**exponent
-    return 0.5 * penalty * inner(u, ν)**2 * ds(tuple(side_wall_ids))
+    penalty = scale * (L / δx) ** exponent
+    return 0.5 * penalty * inner(u, ν) ** 2 * ds(tuple(side_wall_ids))

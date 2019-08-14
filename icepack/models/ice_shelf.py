@@ -12,8 +12,7 @@
 
 import firedrake
 from firedrake import inner, grad, dx, ds
-from icepack.constants import (ice_density as ρ_I, water_density as ρ_W,
-                               gravity as g)
+from icepack.constants import ice_density as ρ_I, water_density as ρ_W, gravity as g
 from icepack.models.viscosity import viscosity_depth_averaged as viscosity
 from icepack.models.friction import side_friction, normal_flow_penalty
 from icepack.models.mass_transport import MassTransport
@@ -41,7 +40,7 @@ def gravity(u, h):
     firedrake.Form
     """
     ρ = ρ_I * (1 - ρ_I / ρ_W)
-    return -0.5 * ρ * g * inner(grad(h**2), u) * dx
+    return -0.5 * ρ * g * inner(grad(h ** 2), u) * dx
 
 
 def terminus(u, h, ice_front_ids=()):
@@ -59,7 +58,7 @@ def terminus(u, h, ice_front_ids=()):
     ν = firedrake.FacetNormal(mesh)
     IDs = tuple(ice_front_ids)
     ρ = ρ_I * (1 - ρ_I / ρ_W)
-    return 0.5 * ρ * g * h**2 * inner(u, ν) * ds(IDs)
+    return 0.5 * ρ * g * h ** 2 * inner(u, ν) * ds(IDs)
 
 
 class IceShelf(object):
@@ -73,8 +72,15 @@ class IceShelf(object):
        :py:func:`icepack.models.viscosity.viscosity_depth_averaged`
           Default implementation of the ice shelf viscous action
     """
-    def __init__(self, viscosity=viscosity, gravity=gravity, terminus=terminus,
-                 side_friction=side_friction, penalty=normal_flow_penalty):
+
+    def __init__(
+        self,
+        viscosity=viscosity,
+        gravity=gravity,
+        terminus=terminus,
+        side_friction=side_friction,
+        penalty=normal_flow_penalty,
+    ):
         self.mass_transport = MassTransport()
         self.viscosity = add_kwarg_wrapper(viscosity)
         self.side_friction = add_kwarg_wrapper(side_friction)
@@ -174,19 +180,22 @@ class IceShelf(object):
         u = u0.copy(deepcopy=True)
 
         boundary_ids = u.ufl_domain().exterior_facets.unique_markers
-        side_wall_ids = kwargs.get('side_wall_ids', [])
-        kwargs['side_wall_ids'] = side_wall_ids
-        kwargs['ice_front_ids'] = list(
-            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids))
+        side_wall_ids = kwargs.get("side_wall_ids", [])
+        kwargs["side_wall_ids"] = side_wall_ids
+        kwargs["ice_front_ids"] = list(
+            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids)
+        )
         bcs = firedrake.DirichletBC(
-            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids)
-        params = {'quadrature_degree': self.quadrature_degree(u, h, **kwargs)}
+            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids
+        )
+        params = {"quadrature_degree": self.quadrature_degree(u, h, **kwargs)}
 
         # Solve the nonlinear optimization problem
         action = self.action(u=u, h=h, **kwargs)
         scale = self.scale(u=u, h=h, **kwargs)
-        return newton_search(action, u, bcs, tol, scale,
-                             form_compiler_parameters=params)
+        return newton_search(
+            action, u, bcs, tol, scale, form_compiler_parameters=params
+        )
 
     def prognostic_solve(self, dt, h0, a, u, **kwargs):
         r"""Propagate the ice thickness forward one timestep

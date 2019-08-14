@@ -1,0 +1,16 @@
+PDEs and variational principals
+
+Partial differential equations: Finite difference
+
+Fields:
+
+thickness, velocity, temperature
+
+operate on these objects
+
+grad, dh/dt
+
+we also have functionals:
+take in a field variable and maps them to a number
+total enery dissapation and entropy are two examples
+

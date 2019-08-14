@@ -12,11 +12,9 @@
 
 import firedrake
 from firedrake import inner, grad, dx, ds
-from icepack.constants import (ice_density as ρ_I, water_density as ρ_W,
-                               gravity as g)
+from icepack.constants import ice_density as ρ_I, water_density as ρ_W, gravity as g
 from icepack.models.viscosity import viscosity_depth_averaged as viscosity
-from icepack.models.friction import (bed_friction, side_friction,
-                                     normal_flow_penalty)
+from icepack.models.friction import bed_friction, side_friction, normal_flow_penalty
 from icepack.models.mass_transport import MassTransport
 from icepack.optimization import newton_search
 from icepack.utilities import add_kwarg_wrapper
@@ -68,10 +66,11 @@ def terminus(u, h, s, ice_front_ids=()):
         calving front
     """
     from firedrake import conditional, lt
+
     d = conditional(lt(s - h, 0), s - h, 0)
 
-    τ_I = ρ_I * g * h**2 / 2
-    τ_W = ρ_W * g * d**2 / 2
+    τ_I = ρ_I * g * h ** 2 / 2
+    τ_W = ρ_W * g * d ** 2 / 2
 
     ν = firedrake.FacetNormal(u.ufl_domain())
     return (τ_I - τ_W) * inner(u, ν) * ds(tuple(ice_front_ids))
@@ -88,9 +87,15 @@ class IceStream(object):
           Default implementation of the ice stream viscous action
     """
 
-    def __init__(self, viscosity=viscosity, friction=bed_friction,
-                 side_friction=side_friction, penalty=normal_flow_penalty,
-                 gravity=gravity, terminus=terminus):
+    def __init__(
+        self,
+        viscosity=viscosity,
+        friction=bed_friction,
+        side_friction=side_friction,
+        penalty=normal_flow_penalty,
+        gravity=gravity,
+        terminus=terminus,
+    ):
         self.mass_transport = MassTransport()
         self.viscosity = add_kwarg_wrapper(viscosity)
         self.friction = add_kwarg_wrapper(friction)
@@ -109,8 +114,7 @@ class IceStream(object):
         terminus = self.terminus(u=u, h=h, s=s, **kwargs)
         penalty = self.penalty(u=u, h=h, s=s, **kwargs)
 
-        return (viscosity + friction + side_friction
-                - gravity - terminus + penalty)
+        return viscosity + friction + side_friction - gravity - terminus + penalty
 
     def scale(self, u, h, s, **kwargs):
         r"""Return the positive, convex part of the action functional
@@ -118,8 +122,9 @@ class IceStream(object):
         The positive part of the action functional is used as a dimensional
         scale to determine when to terminate an optimization algorithm.
         """
-        return (self.viscosity(u=u, h=h, s=s, **kwargs)
-                + self.friction(u=u, h=h, s=s, **kwargs))
+        return self.viscosity(u=u, h=h, s=s, **kwargs) + self.friction(
+            u=u, h=h, s=s, **kwargs
+        )
 
     def quadrature_degree(self, u, h, **kwargs):
         r"""Return the quadrature degree necessary to integrate the action
@@ -168,18 +173,21 @@ class IceStream(object):
         u = u0.copy(deepcopy=True)
 
         boundary_ids = u.ufl_domain().exterior_facets.unique_markers
-        side_wall_ids = kwargs.get('side_wall_ids', [])
-        kwargs['side_wall_ids'] = side_wall_ids
-        kwargs['ice_front_ids'] = list(
-            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids))
+        side_wall_ids = kwargs.get("side_wall_ids", [])
+        kwargs["side_wall_ids"] = side_wall_ids
+        kwargs["ice_front_ids"] = list(
+            set(boundary_ids) - set(dirichlet_ids) - set(side_wall_ids)
+        )
         bcs = firedrake.DirichletBC(
-            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids)
-        params = {'quadrature_degree': self.quadrature_degree(u, h, **kwargs)}
+            u.function_space(), firedrake.as_vector((0, 0)), dirichlet_ids
+        )
+        params = {"quadrature_degree": self.quadrature_degree(u, h, **kwargs)}
 
         action = self.action(u=u, h=h, s=s, **kwargs)
         scale = self.scale(u=u, h=h, s=s, **kwargs)
-        return newton_search(action, u, bcs, tol, scale,
-                             form_compiler_parameters=params)
+        return newton_search(
+            action, u, bcs, tol, scale, form_compiler_parameters=params
+        )
 
     def prognostic_solve(self, dt, h0, a, u, **kwargs):
         r"""Propagate the ice thickness forward one timestep
